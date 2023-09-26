@@ -5,7 +5,7 @@ from urllib.parse import unquote
 
 from sqlalchemy.exc import IntegrityError
 
-from model import Session, Treino
+from model import Session, Treino, BMIData
 from logger import logger
 from schemas import *
 
@@ -167,5 +167,74 @@ def patch_treinos(id):
     response.headers["Content-Type"] = "application/json"
     return response
 
+@app.route('/bmi', methods=['PUT'])
+def update_bmi_data():
+    data = request.get_json()
+    bmi = data.get("bmi")
+    health = data.get("health")
+    healthy_bmi_range = data.get("healthy_bmi_range")
+
+    if bmi is None:
+        return make_response(jsonify({'msg': 'Valor de IMC vazio na solicitação.'}), 400)
+
+    try:
+        session = Session()
+        bmi_data = session.query(BMIData).first()
+
+        if bmi_data:
+            # Se já existirem valores de BMI na base de dados, atualize-os.
+            bmi_data.bmi = bmi
+            bmi_data.health = health
+            bmi_data.healthy_bmi_range = healthy_bmi_range
+        else:
+            # Se não existirem valores na base de dados, crie um novo registro.
+            bmi_data = BMIData(bmi=bmi, health=health, healthy_bmi_range=healthy_bmi_range)
+            session.add(bmi_data)
+
+        session.commit()
+
+        response_json = {
+            "msg": "Valores do IMC, saúde e faixa saudável atualizados com sucesso.",
+            "bmi": bmi,
+            "health": health,
+            "healthy_bmi_range": healthy_bmi_range
+        }
+        response = make_response(jsonify(response_json), 200)
+
+    except Exception as e:
+        error = {"msg": "Não foi possível atualizar os valores do IMC e saúde."}
+        response_json = jsonify(error)
+        response = make_response(response_json, 400)
+
+    response.headers["Content-Type"] = "application/json"
+    return response
+
+
+@app.route('/bmi', methods=['GET'])
+def get_bmi_data():
+    session = Session()
+    bmi_data = session.query(BMIData).first()
+
+    if bmi_data:
+        # Se os valores de BMI existirem na base de dados, retorna esses valores.
+        bmi = bmi_data.bmi
+        health = bmi_data.health
+        healthy_bmi_range = bmi_data.healthy_bmi_range
+    else:
+        # Se não existirem valores na base de dados, retorna valores zerados ou vazios.
+        bmi = 0
+        health = ""
+        healthy_bmi_range = ""
+
+    response_json = {
+        "bmi": bmi,
+        "health": health,
+        "healthy_bmi_range": healthy_bmi_range
+    }
+    print("BMI Data:", bmi_data)
+    return jsonify(response_json)
+
+
 app.run(port=5000, host='localhost', debug=True)
+
 

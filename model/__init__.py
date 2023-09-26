@@ -5,6 +5,7 @@ import os
 
 from model.base import Base
 from model.treino import Treino
+from model.bmi import BMIData
 
 db_path = "database/"
 
